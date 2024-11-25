@@ -1,38 +1,74 @@
-#include "Editor.h"
-#include <fstream>
-#include <sstream>
-#include <iostream>
+#include "editor.h"
+#include <QFile>
+#include <QTextStream>
+#include <QMessageBox>
+#include <QKeyEvent>
 
-Editor::Editor() : textBuffer("") {}
+Editor::Editor(QWidget *parent)
+    : QTextEdit(parent), highlighter(nullptr), currentFilePath("") {
+    setFont(QFont("Courier", 12));  // Monospaced font
+    setLineWrapMode(QTextEdit::NoWrap); // Disable line wrapping
 
-Editor::~Editor() {}
+    // Auto-save timer setup
+    connect(&autoSaveTimer, &QTimer::timeout, this, &Editor::autoSave);
+    autoSaveTimer.start(30000);  // Auto-save every 30 seconds
+}
 
-void Editor::openFile(const std::string& filePath) {
-    std::ifstream file(filePath);
-    if (file.is_open()) {
-        std::stringstream buffer;
-        buffer << file.rdbuf();
-        textBuffer = buffer.str();
-        file.close();
+Editor::~Editor() {
+    if (highlighter)
+        delete highlighter;
+}
+
+void Editor::setHighlighter(QSyntaxHighlighter *highlighter) {
+    this->highlighter = highlighter;
+    if (this->highlighter)
+        this->highlighter->setDocument(this->document());
+}
+
+bool Editor::saveToFile(const QString &filePath) {
+    QFile file(filePath);
+    if (!file.open(QFile::WriteOnly | QFile::Text)) {
+        QMessageBox::warning(this, "Error", "Cannot save file: " + file.errorString());
+        return false;
+    }
+    QTextStream out(&file);
+    out << this->toPlainText();
+    file.close();
+    currentFilePath = filePath;
+    return true;
+}
+
+bool Editor::loadFromFile(const QString &filePath) {
+    QFile file(filePath);
+    if (!file.open(QFile::ReadOnly | QFile::Text)) {
+        QMessageBox::warning(this, "Error", "Cannot open file: " + file.errorString());
+        return false;
+    }
+    QTextStream in(&file);
+    this->setPlainText(in.readAll());
+    file.close();
+    currentFilePath = filePath;
+    return true;
+}
+
+QString Editor::getFilePath() const {
+    return currentFilePath;
+}
+
+void Editor::setFilePath(const QString &path) {
+    currentFilePath = path;
+}
+
+void Editor::keyPressEvent(QKeyEvent *event) {
+    if (event->key() == Qt::Key_Tab) {
+        this->insertPlainText("    "); // Replace tab with spaces
     } else {
-        std::cerr << "Error: Could not open file " << filePath << std::endl;
+        QTextEdit::keyPressEvent(event);
     }
 }
 
-void Editor::saveFile(const std::string& filePath) {
-    std::ofstream file(filePath);
-    if (file.is_open()) {
-        file << textBuffer;
-        file.close();
-    } else {
-        std::cerr << "Error: Could not save file " << filePath << std::endl;
+void Editor::autoSave() {
+    if (!currentFilePath.isEmpty()) {
+        saveToFile(currentFilePath);
     }
-}
-
-void Editor::setText(const std::string& text) {
-    textBuffer = text;
-}
-
-std::string Editor::getText() const {
-    return textBuffer;
 }
