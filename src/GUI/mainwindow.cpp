@@ -1,10 +1,25 @@
-#include "MainWindow.h"
-#include <iostream>
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
 
-MainWindow::MainWindow() {}
+#include <QMainWindow>
+#include <QTabWidget>
+#include <QWidget>
 
-MainWindow::~MainWindow() {}
+class MainWindow : public QMainWindow {
+    Q_OBJECT
 
-void MainWindow::show() {
-    std::cout << "Main window displayed!" << std::endl;
-}
+public:
+    MainWindow();
+    ~MainWindow();
+    void show();
+
+private slots:
+    void addNewTab();
+    void closeTab(int index);
+
+private:
+    QWidget *centralWidget;
+    QTabWidget *tabWidget;
+};
+
+#endif // MAINWINDOW_H
